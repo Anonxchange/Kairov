@@ -1,6 +1,6 @@
-# [Project name]
+# Kairov Digital Solutions
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Kairov’s website explains its digital-solutions services and practical, problem-first approach.
 
 ## Run & Operate
 
@@ -30,11 +30,13 @@ _Populate as you build — non-obvious choices a reader couldn't infer from the 
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+The site preview uses five supplied Webflow exports: home, about, services, case studies, and contact.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Preserve the supplied site's visual design; update business copy and context only.
+- Leave the existing client, testimonial, and performance-claim sections unchanged unless the user asks otherwise.
+- Do not publish the preview without the user's request.
 
 ## Gotchas
 

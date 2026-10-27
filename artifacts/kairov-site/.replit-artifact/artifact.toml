@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Kairov Digital Solutions"
+description = "Kairov's website for explaining its digital solutions, services, and approach. Built from the supplied Webflow page exports with the original visual design preserved and the business copy updated."
+version = "1.0.0"
+id = "artifacts/kairov-site"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22030
+
+[services.development]
+run = "pnpm --filter @workspace/kairov-site run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/kairov-site", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/kairov-site/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22030"
+BASE_PATH = "/"
