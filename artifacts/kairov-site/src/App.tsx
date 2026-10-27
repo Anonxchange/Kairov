@@ -25,9 +25,69 @@ function applyPageOverrides(frame: HTMLIFrameElement) {
   const page = frame.contentDocument;
   if (!page?.head || !page.body) return;
 
+  const appBase = import.meta.env.BASE_URL.replace(/\/$/, '');
+  const routeUrl = (route: string) => `${appBase}${route}` || '/';
+
   const badgeStyle = page.createElement('style');
   badgeStyle.textContent = '.w-webflow-badge { display: none !important; }';
   page.head.appendChild(badgeStyle);
+
+  const navRoutes: Record<string, string> = {
+    home: '/',
+    about: '/about',
+    services: '/services',
+    'case studies': '/case-studies-v1',
+    contact: '/contact',
+  };
+  const nav = page.querySelector('.navbar-inner-menu');
+  nav?.querySelectorAll('.nav-menu-dropdown').forEach((dropdown) => {
+    const label =
+      dropdown
+        .querySelector('.navbar-dropdwn-toggle .nav-link')
+        ?.textContent?.trim() ?? '';
+    const route = navRoutes[label.toLowerCase()];
+
+    if (label.toLowerCase() === 'pages') {
+      dropdown.remove();
+      return;
+    }
+
+    if (!route) return;
+
+    const link = page.createElement('a');
+    link.className = 'nav-link w-nav-link';
+    link.textContent = label;
+    link.href = routeUrl(route);
+    link.target = '_top';
+    dropdown.replaceWith(link);
+  });
+
+  nav?.querySelectorAll<HTMLAnchorElement>('a.nav-link.w-nav-link').forEach((link) => {
+    const route = navRoutes[link.textContent?.trim().toLowerCase() ?? ''];
+    if (!route) return;
+    link.href = routeUrl(route);
+    link.target = '_top';
+  });
+
+  const logo = page.querySelector<HTMLAnchorElement>('.navbar-logo-link');
+  if (logo) {
+    logo.href = routeUrl('/');
+    logo.target = '_top';
+  }
+
+  page.querySelectorAll<HTMLAnchorElement>('a').forEach((link) => {
+    const label = link.textContent?.trim().toLowerCase();
+    if (label === 'start a project' || label === 'get in touch') {
+      link.href = routeUrl('/contact');
+      link.target = '_top';
+    }
+  });
+
+  page.querySelectorAll('.copyright-text-holder').forEach((attribution) => {
+    if (/olynex|webflow/i.test(attribution.textContent ?? '')) {
+      attribution.remove();
+    }
+  });
 
   const walker = page.createTreeWalker(page.body, 4);
   let node = walker.nextNode();
