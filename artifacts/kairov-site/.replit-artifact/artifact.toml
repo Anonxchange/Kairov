@@ -1,7 +1,7 @@
 kind = "web"
 previewPath = "/"
 title = "Kairov Digital Solutions"
-description = "Kairov's website for explaining its digital solutions, services, and approach. Built from the supplied Webflow page exports with the original visual design preserved and the business copy updated."
+description = "Kairov’s public company website for its digital-solutions services, preserving the existing page design and content while running independently from Webflow."
 version = "1.0.0"
 id = "artifacts/kairov-site"
 router = "path"

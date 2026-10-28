@@ -31,10 +31,12 @@ _Populate as you build — non-obvious choices a reader couldn't infer from the 
 ## Product
 
 The site preview uses five supplied Webflow exports: home, about, services, case studies, and contact.
+The CEO is Olamide Oluwole, and the public support email is support@kairov.com.
 
 ## User preferences
 
 - Preserve the supplied site's visual design; update business copy and context only.
+- Keep Webflow badges and attribution off the live site; serve the pages and assets locally.
 - Leave the existing client, testimonial, and performance-claim sections unchanged unless the user asks otherwise.
 - Do not publish the preview without the user's request.
 

@@ -1,9 +1,10 @@
-import { type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
+import { pageMetadata, type PageMetadata } from './seo';
 import {
   Route,
   Switch,
@@ -13,6 +14,52 @@ import {
 
 const queryClient = new QueryClient();
 
+function setMetaTag(
+  documentNode: Document,
+  attribute: 'name' | 'property',
+  key: string,
+  content: string,
+) {
+  let tag = documentNode.head.querySelector<HTMLMetaElement>(
+    `meta[${attribute}="${key}"]`,
+  );
+  if (!tag) {
+    tag = documentNode.createElement('meta');
+    tag.setAttribute(attribute, key);
+    documentNode.head.appendChild(tag);
+  }
+  tag.content = content;
+}
+
+function applyMetadata(documentNode: Document, metadata: PageMetadata) {
+  documentNode.title = metadata.title;
+  setMetaTag(documentNode, 'name', 'description', metadata.description);
+  setMetaTag(documentNode, 'property', 'og:site_name', 'Kairov');
+  setMetaTag(documentNode, 'property', 'og:title', metadata.title);
+  setMetaTag(documentNode, 'property', 'og:description', metadata.description);
+  setMetaTag(documentNode, 'property', 'og:type', 'website');
+  setMetaTag(documentNode, 'name', 'twitter:card', 'summary');
+  setMetaTag(documentNode, 'name', 'twitter:title', metadata.title);
+  setMetaTag(documentNode, 'name', 'twitter:description', metadata.description);
+
+  documentNode.head
+    .querySelectorAll(
+      'meta[name="generator"], meta[property="og:image"], meta[name="twitter:image"], link[rel="preconnect"][href*="website-files.com"]',
+    )
+    .forEach((element) => element.remove());
+}
+
+function RouteMetadata() {
+  const [location] = useLocation();
+  const metadata = pageMetadata[location] ?? pageMetadata['/'];
+
+  useEffect(() => {
+    applyMetadata(document, metadata);
+  }, [metadata]);
+
+  return null;
+}
+
 const pageDocuments: Record<string, string> = {
   '/': 'home/001-index/index.html',
   '/about': 'about/001-about/index.html',
@@ -21,16 +68,48 @@ const pageDocuments: Record<string, string> = {
   '/contact': 'contact/001-contact/index.html',
 };
 
-function applyPageOverrides(frame: HTMLIFrameElement) {
+function applyPageOverrides(
+  frame: HTMLIFrameElement,
+  metadata: PageMetadata,
+) {
   const page = frame.contentDocument;
   if (!page?.head || !page.body) return;
+
+  applyMetadata(page, metadata);
 
   const appBase = import.meta.env.BASE_URL.replace(/\/$/, '');
   const routeUrl = (route: string) => `${appBase}${route}` || '/';
 
+  const removeWebflowBranding = () => {
+    page.querySelectorAll('.w-webflow-badge').forEach((badge) => badge.remove());
+    page.querySelectorAll('.copyright-text-holder').forEach((attribution) => {
+      if (/olynex|webflow/i.test(attribution.textContent ?? '')) {
+        attribution.remove();
+      }
+    });
+  };
+
   const badgeStyle = page.createElement('style');
-  badgeStyle.textContent = '.w-webflow-badge { display: none !important; }';
+  badgeStyle.textContent =
+    '.w-webflow-badge, .copyright-text-holder { display: none !important; }';
   page.head.appendChild(badgeStyle);
+  removeWebflowBranding();
+  new MutationObserver(removeWebflowBranding).observe(page.documentElement, {
+    childList: true,
+    subtree: true,
+  });
+
+  page.querySelectorAll('.footer-grid').forEach((footerGrid) => {
+    footerGrid
+      .querySelectorAll<HTMLElement>('.footer-grid-content')
+      .forEach((column) => {
+        const heading = column
+          .querySelector('.footer-heading')
+          ?.textContent?.trim()
+          .toLowerCase();
+        if (heading === 'template') column.remove();
+      });
+  });
 
   const navRoutes: Record<string, string> = {
     home: '/',
@@ -83,21 +162,15 @@ function applyPageOverrides(frame: HTMLIFrameElement) {
     }
   });
 
-  page.querySelectorAll('.copyright-text-holder').forEach((attribution) => {
-    if (/olynex|webflow/i.test(attribution.textContent ?? '')) {
-      attribution.remove();
-    }
-  });
-
   const walker = page.createTreeWalker(page.body, 4);
   let node = walker.nextNode();
   while (node) {
     const text = node.textContent;
-    if (text?.includes('[Add Kairov phone]')) {
-      node.textContent = text.replaceAll(
-        '[Add Kairov phone]',
-        '+2348134478949',
-      );
+    if (text) {
+      node.textContent = text
+        .replaceAll('[Add Kairov phone]', '+2348134478949')
+        .replaceAll('[Add Kairov email]', 'support@kairov.com')
+        .replaceAll('John Doe', 'Olamide Oluwole');
     }
     node = walker.nextNode();
   }
@@ -106,7 +179,41 @@ function applyPageOverrides(frame: HTMLIFrameElement) {
     if (link.textContent?.includes('+2348134478949')) {
       link.href = 'tel:+2348134478949';
     }
+    if (link.textContent?.includes('support@kairov.com')) {
+      link.href = 'mailto:support@kairov.com';
+    }
   });
+
+  page.querySelectorAll<HTMLFormElement>('form').forEach((form) => {
+    form.removeAttribute('data-turnstile-sitekey');
+  });
+
+  page.addEventListener(
+    'submit',
+    (event) => {
+      const view = page.defaultView;
+      const form = event.target;
+      if (!view || !(form instanceof view.HTMLFormElement)) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const fields = Array.from(new FormData(form).entries())
+        .filter(([, value]) => String(value).trim())
+        .map(([name, value]) => `${name}: ${value}`)
+        .join('\n');
+      const formId = form.id.toLowerCase();
+      const subject = formId.includes('phone-number')
+        ? 'Request a call from Kairov'
+        : formId.includes('email-form')
+          ? 'Kairov email updates'
+          : 'Website enquiry for Kairov';
+      const mailto = `mailto:support@kairov.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(fields)}`;
+
+      view.location.assign(mailto);
+    },
+    true,
+  );
 }
 
 function SourcePage({ path }: { path: string }) {
@@ -118,7 +225,12 @@ function SourcePage({ path }: { path: string }) {
       src={src}
       title={`Kairov ${path === '/' ? 'home' : path.slice(1).replaceAll('-', ' ')}`}
       data-testid={`page-${path === '/' ? 'home' : path.slice(1)}`}
-      onLoad={(event) => applyPageOverrides(event.currentTarget)}
+      onLoad={(event) =>
+        applyPageOverrides(
+          event.currentTarget,
+          pageMetadata[path] ?? pageMetadata['/'],
+        )
+      }
     />
   );
 }
@@ -150,6 +262,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+          <RouteMetadata />
           <Router />
         </WouterRouter>
         <Toaster />
